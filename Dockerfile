@@ -20,5 +20,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run the application using Python directly (handles PORT internally)
-CMD ["python", "-m", "app.main"]
+# Use ENTRYPOINT to force the start command even if the platform tries to override CMD
+ENTRYPOINT ["python", "-m", "app.main"]
