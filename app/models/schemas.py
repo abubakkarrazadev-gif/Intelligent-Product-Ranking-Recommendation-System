@@ -37,3 +37,7 @@ class Product(BaseModel):
     # ML Scores
     quality_score: Optional[float] = 0.0
     rank: Optional[int] = None
+    
+    # NLP Insights
+    pros: List[str] = []
+    cons: List[str] = []

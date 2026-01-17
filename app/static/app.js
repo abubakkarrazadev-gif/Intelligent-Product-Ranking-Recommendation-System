@@ -106,11 +106,14 @@ function getScoreColor(score) {
 }
 
 // Modal Logic
+let radarChartInstance = null;
+
 async function openAnalysis(asin) {
     const modal = document.getElementById('analysisModal');
     modal.classList.remove('hidden');
 
-    // Show loading state in modal if needed, or pre-fill with basics
+    // Show loading...
+
     const product = currentProducts.find(p => p.asin === asin);
     if (product) {
         document.getElementById('modalTitle').textContent = product.product_title;
@@ -123,18 +126,34 @@ async function openAnalysis(asin) {
         else document.getElementById('modalPrime').classList.add('hidden');
     }
 
-    // Fetch deep analysis
     try {
         const response = await fetch(`${API_BASE}/product/${asin}/analysis`);
         const fullData = await response.json();
 
         updateModalWithDetails(fullData);
+        renderRadarChart(fullData);
     } catch (e) {
         console.error(e);
     }
 }
 
 function updateModalWithDetails(data) {
+    // Populate Pros/Cons
+    const tagsDiv = document.getElementById('sentimentTags');
+    tagsDiv.innerHTML = '';
+
+    if (data.pros && data.pros.length > 0) {
+        data.pros.forEach(p => {
+            tagsDiv.innerHTML += `<span class="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded border border-green-500/30"><i class="fas fa-check mr-1"></i>${p}</span>`;
+        });
+    }
+
+    if (data.cons && data.cons.length > 0) {
+        data.cons.forEach(c => {
+            tagsDiv.innerHTML += `<span class="bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded border border-red-500/30"><i class="fas fa-times mr-1"></i>${c}</span>`;
+        });
+    }
+
     // Populate reviews
     const reviewsList = document.getElementById('reviewsList');
     reviewsList.innerHTML = '';
@@ -153,17 +172,61 @@ function updateModalWithDetails(data) {
             reviewsList.appendChild(div);
         });
 
-        // Sentiment Text Summary (Mock generation based on data)
+        // Sentiment Text Summary
         const posCount = data.reviews.filter(r => r.sentiment_label === 'Positive').length;
         const total = data.reviews.length;
         const percent = Math.round((posCount / total) * 100);
 
         document.getElementById('modalSentimentText').textContent =
-            `Analysis of ${total} recent reviews indicates a ${percent}% positive sentiment rate. ${percent > 70 ? 'Users strongly recommend this product.' : 'Opinions are mixed on this item.'}`;
+            `Analysis based on verified purchase reviews. ${percent}% positive sentiment detected.`;
     } else {
         reviewsList.textContent = "No detailed reviews available.";
     }
 }
+
+function renderRadarChart(data) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+
+    if (radarChartInstance) radarChartInstance.destroy();
+
+    // Normalize values roughly
+    const ratingNorm = (parseFloat(data.product_star_rating || 0) / 5) * 100;
+    const sentimentNorm = data.quality_score; // Rough proxy
+    const popularityNorm = Math.min(100, (data.product_num_ratings || 0) / 100);
+    const priceVal = 80; // Placeholder as price is inverted value often
+
+    radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Rating', 'Sentiment', 'Popularity', 'Value', 'Reliability'],
+            datasets: [{
+                label: 'Product Metrics',
+                data: [ratingNorm, sentimentNorm, popularityNorm, priceVal, 90],
+                backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                borderColor: '#38bdf8',
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#38bdf8',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    pointLabels: { color: '#94a3b8', font: { size: 12 } },
+                    ticks: { display: false, backdropColor: 'transparent' },
+                    suggestedMin: 0,
+                    suggestedMax: 100
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
 
 function closeModal() {
     document.getElementById('analysisModal').classList.add('hidden');

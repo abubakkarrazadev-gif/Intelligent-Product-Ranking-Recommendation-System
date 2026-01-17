@@ -65,9 +65,26 @@ class DataService:
                 sentiment_score=polarity,
                 sentiment_label=label
             )
+        for r in r_data_list:
+            comment = r.get("review_comment", "")
+            polarity, label = SentimentModel.analyze(comment)
+            
+            review_obj = Review(
+                review_id=r.get("review_id", ""),
+                review_title=r.get("review_title"),
+                review_comment=comment,
+                review_star_rating=r.get("review_star_rating", "0"),
+                review_date=r.get("review_date"),
+                sentiment_score=polarity,
+                sentiment_label=label
+            )
             processed_reviews.append(review_obj)
             total_sentiment += polarity
             
+        # 3b. Extract Key Features (Pros/Cons)
+        all_comments = [r.review_comment for r in processed_reviews if r.review_comment]
+        features = SentimentModel.extract_features(all_comments)
+        
         # 4. Construct Product Object
         product = Product(
             asin=p_data.get("asin"),
@@ -81,7 +98,9 @@ class DataService:
             product_photo=p_data.get("product_photo"),
             is_prime=p_data.get("is_prime", False),
             delivery=p_data.get("delivery"),
-            reviews=processed_reviews
+            reviews=processed_reviews,
+            pros=features['pros'],
+            cons=features['cons']
         )
         
         # 5. Extract Seller Info (simplified for now as API support varies)
