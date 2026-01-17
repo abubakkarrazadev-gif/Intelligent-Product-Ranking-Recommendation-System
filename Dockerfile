@@ -20,5 +20,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Use ENTRYPOINT to force the start command even if the platform tries to override CMD
-ENTRYPOINT ["python", "-m", "app.main"]
+# Run the application using the root-level script
+ENTRYPOINT ["python", "run.py"]
